@@ -48,38 +48,120 @@ contract SimpleSwapTest is BaseDeploy {
 		super.setUp();
 		vm.startPrank(deployer);
 		providerLiquidity = new ProviderLiquidity(nonfungiblePositionManager);
-		// 针对tokens[1],toekns[2]创建3个池子
+		// 针对tokens[1],toekns[2] 创建3个池子
 		mintNewPool(tokens[1], tokens[2], FEE_LOW, INIT_PRICE);
 		mintNewPool(tokens[1], tokens[2], FEE_MEDIUM, INIT_PRICE);
 		mintNewPool(tokens[1], tokens[2], FEE_HIGH, INIT_PRICE);
 		console2.log(uint256(INIT_PRICE));
-		TransferHelper.safeApprove(
-			tokens[1],
+		IERC20(tokens[1]).transfer(
 			address(providerLiquidity),
-			type(uint256).max / 2
+			type(uint256).max / 4
 		);
-		TransferHelper.safeApprove(
-			tokens[2],
+		IERC20(tokens[2]).transfer(
 			address(providerLiquidity),
-			type(uint256).max / 2
+			type(uint256).max / 4
 		);
+
 		vm.stopPrank();
 	}
 
-	function test_mintNewPosition() public {
-		vm.prank(deployer);
+	/* 简单测试 tick边界测试的是max & min*/
+	function test_simpleMintNewPosition() public {
+		uint256 amount0ToMint = 10000;
+		uint256 amount1ToMint = 10000;
+		vm.startPrank(deployer);
+
 		providerLiquidity.mintNewPosition(
 			tokens[1],
 			tokens[2],
 			TICK_LOW,
 			getMinTick(TICK_LOW),
 			getMaxTick(TICK_LOW),
-			10000,
-			10000
+			amount0ToMint,
+			amount1ToMint
 		);
+		vm.stopPrank();
 	}
 
+	function test_ProviderLiquidity() public {
+		uint256 amount0ToMint = 10000;
+		uint256 amount1ToMint = 10000;
+		vm.startPrank(deployer);
+
+		(
+			uint256 tokenId,
+			uint128 liquidity,
+			uint256 amount0,
+			uint256 amount1
+		) = providerLiquidity.mintNewPosition(
+				tokens[1],
+				tokens[2],
+				TICK_LOW,
+				getMinTick(TICK_LOW),
+				getMaxTick(TICK_LOW),
+				amount0ToMint,
+				amount1ToMint
+			);
+		providerLiquidity.decreaseLiquidityInHalf(tokenId);
+		vm.stopPrank();
+	}
+
+
 	function test_mintNewPosition_fail() public {}
+
+	// function singlePoolExactInput(
+	// 	address[] memory tokens,
+	// 	uint256 amountIn,
+	// 	uint256 amountOutMinimum
+	// ) public {
+	// 	vm.startPrank(trader);
+
+	// 	bool inputIsWETH = tokens[0] == address(weth9);
+	// 	bool outputIsWETH = tokens[tokens.length - 1] == address(weth9);
+	// 	uint256 value = inputIsWETH ? amountIn : 0;
+
+	// 	uint24[] memory fees = new uint24[](tokens.length - 1);
+	// 	for (uint256 i = 0; i < fees.length; i++) {
+	// 		fees[i] = FEE_MEDIUM;
+	// 	}
+
+	// 	ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
+	// 		path: encodePath(tokens, fees),
+	// 		recipient: outputIsWETH ? address(0) : trader,
+	// 		deadline: 1,
+	// 		amountIn: amountIn,
+	// 		amountOutMinimum: amountOutMinimum
+	// 	});
+
+	// 	bytes[] memory data;
+	// 	bytes memory inputs = abi.encodeWithSelector(
+	// 		router.exactInput.selector,
+	// 		params
+	// 	);
+	// 	if (outputIsWETH) {
+	// 		data = new bytes[](2);
+	// 		data[0] = inputs;
+	// 		data[1] = abi.encodeWithSelector(
+	// 			router.unwrapWETH9.selector,
+	// 			amountOutMinimum,
+	// 			trader
+	// 		);
+	// 	}
+
+	// 	// ensure that the swap fails if the limit is any higher
+	// 	params.amountOutMinimum += 1;
+	// 	vm.expectRevert(bytes("Too little received"));
+	// 	router.exactInput{ value: value }(params);
+	// 	params.amountOutMinimum -= 1;
+
+	// 	if (outputIsWETH) {
+	// 		router.multicall{ value: value }(data);
+	// 	} else {
+	// 		router.exactInput{ value: value }(params);
+	// 	}
+
+	// 	vm.stopPrank();
+	// }
 
 	function mintNewPool(
 		address token0,
@@ -127,7 +209,6 @@ contract SimpleSwapTest is BaseDeploy {
 				amount0ToMint,
 				amount1ToMint
 			);
-		//         mintNewPosition(token0, token1, tickSpacing, tickLower, tickUpper, 1000000, 1000000);
 	}
 
 	/* ExactInput */
