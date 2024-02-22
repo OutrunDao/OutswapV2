@@ -12,6 +12,10 @@ docs/
 .env
 
 # Vscode file
-.vscode
-.github
-.history
+.vscode/
+.github/
+.git/
+
+# lib
+node_modules/
+lib/
